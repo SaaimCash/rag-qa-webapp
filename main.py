@@ -4,8 +4,17 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import logging
+import time
+
 from vector_store import process_and_store_document
 from rag_app import retriever, prompt_template, llm
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="RAG Lab API",
@@ -75,6 +84,8 @@ def ask_question(request: QueryRequest):
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
+    start_time = time.perf_counter()
+
     try:
         # 1. Retrieve matching chunks from ChromaDB
         matching_docs = retriever.invoke(request.question)
@@ -98,6 +109,9 @@ def ask_question(request: QueryRequest):
         # 4. Generate answer via LLM
         response = llm.invoke(formatted_messages)
 
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        logger.info(f"Answered question={request.question!r} sources={len(sources)} elapsed_ms={elapsed_ms:.1f}")
+
         return {
             "question": request.question,
             "answer": response.content,
@@ -105,4 +119,5 @@ def ask_question(request: QueryRequest):
             "context_retrieved": [doc.page_content for doc in matching_docs]
         }
     except Exception as e:
+        logger.exception(f"LLM generation error for question: {request.question!r}")
         raise HTTPException(status_code=500, detail=f"LLM generation error: {str(e)}")
