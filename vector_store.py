@@ -1,5 +1,5 @@
 import os
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, CSVLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -7,7 +7,7 @@ from langchain_chroma import Chroma
 
 def process_and_store_document(file_path: str):
     """
-    Loads a PDF or TXT file, splits it into overlapping chunks,
+    Loads a PDF, TXT, MD, DOCX, CSV, or JSON file, splits it into overlapping chunks,
     generates embeddings, and persists them into ChromaDB.
 
     Re-running this on the same file_path replaces that file's old
@@ -19,12 +19,17 @@ def process_and_store_document(file_path: str):
     print(f"\n1. Loading document from: {file_path}")
 
     # Select loader based on file extension
-    if file_path.endswith(".pdf"):
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == ".pdf":
         loader = PyPDFLoader(file_path)
-    elif file_path.endswith(".txt"):
-        loader = TextLoader(file_path)
+    elif ext in [".txt", ".md", ".json"]:
+        loader = TextLoader(file_path, autodetect_encoding=True)
+    elif ext == ".docx":
+        loader = Docx2txtLoader(file_path)
+    elif ext == ".csv":
+        loader = CSVLoader(file_path)
     else:
-        raise ValueError("Unsupported file format. Please provide a .pdf or .txt file.")
+        raise ValueError(f"Unsupported file format '{ext}'. Supported formats: .pdf, .txt, .md, .docx, .csv, .json")
 
     raw_documents = loader.load()
     print(f"Loaded {len(raw_documents)} raw page(s)/document(s).")

@@ -18,11 +18,11 @@ load_dotenv()
 #   "ollama/llama3.2"                       -> local, no key needed
 #   "openai/gpt-4o-mini"                    -> needs OPENAI_API_KEY
 #   "anthropic/claude-3-5-sonnet-20241022"  -> needs ANTHROPIC_API_KEY
-#   "groq/llama-3.1-8b-instant"             -> needs GROQ_API_KEY
+#   "groq/qwen/qwen3.8-27b"             -> needs GROQ_API_KEY
 #   "gemini/gemini-2.0-flash"               -> needs GEMINI_API_KEY
 #   "mistral/mistral-large-latest"          -> needs MISTRAL_API_KEY
 # ---------------------------------------------------------
-MODEL = "groq/llama-3.1-8b-instant"
+MODEL = "groq/qwen/qwen3.8-27b"
 
 
 

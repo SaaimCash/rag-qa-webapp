@@ -35,6 +35,9 @@ class QueryRequest(BaseModel):
     question: str
 
 
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx", ".csv", ".json"}
+
+
 @app.get("/api/v1/health")
 def health_check():
     """Health check endpoint to verify backend status."""
@@ -44,11 +47,15 @@ def health_check():
 @app.post("/api/v1/upload")
 async def upload_document(file: UploadFile = File(...)):
     """
-    Endpoint to receive a PDF or TXT file over HTTP, save it temporarily,
+    Endpoint to receive a document over HTTP, save it temporarily,
     and process its vectors into ChromaDB.
     """
-    if not (file.filename.endswith(".pdf") or file.filename.endswith(".txt")):
-        raise HTTPException(status_code=400, detail="Only .pdf and .txt files are supported.")
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format '{ext}'. Supported formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+        )
 
     temp_dir = "./temp_uploads"
     os.makedirs(temp_dir, exist_ok=True)
