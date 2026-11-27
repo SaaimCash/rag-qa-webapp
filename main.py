@@ -2,13 +2,14 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 from pydantic import BaseModel
 
 import logging
 import time
 
 from vector_store import process_and_store_document
-from rag_app import retriever, prompt_template, llm
+from rag_app import vectorstore, prompt_template, llm
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +34,7 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     question: str
+    document_name: Optional[str] = None
 
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx", ".csv", ".json"}
@@ -57,7 +59,7 @@ async def upload_document(file: UploadFile = File(...)):
             detail=f"Unsupported file format '{ext}'. Supported formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
-    temp_dir = "./temp_uploads"
+    temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
     os.makedirs(temp_dir, exist_ok=True)
     temp_file_path = os.path.join(temp_dir, file.filename)
 
@@ -67,7 +69,7 @@ async def upload_document(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
 
         # Vectorize and embed into ChromaDB
-        process_and_store_document(temp_file_path)
+        process_and_store_document(temp_file_path, original_filename=file.filename)
 
         return {
             "status": "success",
@@ -94,8 +96,19 @@ def ask_question(request: QueryRequest):
     start_time = time.perf_counter()
 
     try:
-        # 1. Retrieve matching chunks from ChromaDB
-        matching_docs = retriever.invoke(request.question)
+        # 1. Retrieve matching chunks from ChromaDB (filtered to active document if provided)
+        if request.document_name:
+            matching_docs = vectorstore.similarity_search(
+                request.question,
+                k=8,
+                filter={"source": request.document_name}
+            )
+            # If no chunks matched specific filter, fallback to general search
+            if not matching_docs:
+                matching_docs = vectorstore.similarity_search(request.question, k=8)
+        else:
+            matching_docs = vectorstore.similarity_search(request.question, k=8)
+
         context_text = "\n\n".join([doc.page_content for doc in matching_docs])
 
         # 2. Extract source citations (convert 0-indexed page to 1-indexed for display)
