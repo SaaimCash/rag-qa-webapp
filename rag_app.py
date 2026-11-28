@@ -2,6 +2,10 @@
 
 import os
 from dotenv import load_dotenv
+
+# Ensure .env is always loaded from ai_rag_lab directory
+ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=ENV_PATH)
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
@@ -28,11 +32,13 @@ MODEL = "groq/qwen/qwen3.8-27b"
 
 # CONNECTS TO CHROMADB VECTOR STORE
 
+CHROMA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
+
 print("1. Loading embedding model & connecting to local ChromaDB...")
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 vectorstore = Chroma(
-    persist_directory="./chroma_db",
+    persist_directory=CHROMA_DIR,
     embedding_function=embedding_model
 )
 
@@ -90,6 +96,9 @@ def ask_rag(user_question: str):
 
 if __name__ == "__main__":
     # RUNS RAG PIPELINE TESTS (Targeting sample.pdf content)
-    ask_rag("What is the main subject of this document?")
-    ask_rag("Can you summarize the core conclusions of the paper?")
-    ask_rag("What is Srisawad Corporation Public Company Limited (SAWAD)")
+    # Commented out so sample.pdf tests don't run or interfere with your uploaded docs.
+    # Uncomment the lines below if you wish to run manual sample tests:
+    # ask_rag("What is the main subject of this document?")
+    # ask_rag("Can you summarize the core conclusions of the paper?")
+    # ask_rag("What is Srisawad Corporation Public Company Limited (SAWAD)")
+    pass
