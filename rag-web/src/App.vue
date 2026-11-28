@@ -213,12 +213,6 @@
                 >
                   "Summarize the core conclusions"
                 </button>
-                <button
-                  class="chip-btn"
-                  @click="useSuggestedPrompt('What are the key figures, dates, or quantitative metrics mentioned?')"
-                >
-                  "Extract key figures & metrics"
-                </button>
               </div>
             </div>
           </div>
@@ -237,7 +231,8 @@
 
             <div class="message-body">
               <div class="message-bubble">
-                <div class="text-rendered">{{ msg.text }}</div>
+                <div v-if="msg.role === 'user'" class="text-rendered">{{ msg.text }}</div>
+                <div v-else class="text-rendered" v-html="renderMarkdown(msg.text)"></div>
               </div>
 
               <!-- CITATIONS & CONTEXT EXPANDER (IF AVAILABLE) -->
@@ -317,9 +312,13 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
 
 const API_BASE = 'http://localhost:8000'
 const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx', '.csv', '.json']
+
+const renderMarkdown = (text) => DOMPurify.sanitize(marked.parse(text || ''))
 
 // UI & Reactive State
 const backendOnline = ref(false)
@@ -1096,6 +1095,24 @@ const scrollToBottom = async () => {
   font-size: 0.88rem;
   line-height: 1.55;
   word-break: break-word;
+}
+
+.text-rendered :deep(p) {
+  margin: 0 0 0.65em;
+}
+
+.text-rendered :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.text-rendered :deep(ul),
+.text-rendered :deep(ol) {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+
+.text-rendered :deep(li + li) {
+  margin-top: 0.2em;
 }
 
 /* USER MESSAGE: ELEVATED LIGHTER BLACK */
