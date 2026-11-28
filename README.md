@@ -1,143 +1,140 @@
-# 🧠 AI RAG Lab
+# AI RAG Lab
 
-A mini project demo to learn how to build a local **Retrieval-Augmented Generation (RAG)** pipeline and REST API with LangChain, ChromaDB, LiteLLM, and FastAPI.
+AI RAG Lab is a small, NotebookLM-inspired document Q&A application. Upload documents, ask questions about their contents, and get answers grounded in passages retrieved from those documents, with source and page citations where available.
 
-Ask questions about your documents — the AI answers using **only** what's in your knowledge base, and refuses to hallucinate.
+It is a learning project and a lightweight “NotebookLM copy” in spirit—not a copy of Google's product. It uses a locally stored ChromaDB vector database and a configurable language model provider, rather than NotebookLM's private services and features.
 
----
+## What it does
 
-## 📁 Project Structure
+- Upload PDF, TXT, Markdown, DOCX, CSV, and JSON files through a Vue web interface or the API.
+- Extract and split document text into overlapping chunks.
+- Generate local text embeddings with `sentence-transformers/all-MiniLM-L6-v2` and store them in ChromaDB.
+- Retrieve relevant passages when a question is asked, then send those passages and the question to the configured LLM.
+- Return an answer, retrieved context, and source citations (including page numbers when the loader provides them).
+- Run a FastAPI backend and Vue 3 frontend locally.
 
+The answers are intended to be based on retrieved document context. Like any LLM application, responses are not guaranteed to be correct; check the cited sources.
+
+## Frontend
+
+The Vue 3 frontend is a two-pane workspace: upload or drag and drop a document on the left, preview it where supported, and chat with the RAG assistant on the right. It shows whether the backend is online, displays answers with source citations, and lets you view retrieved context. The browser sends uploads and questions to the FastAPI backend at `http://localhost:8000`; it does not perform the document indexing or AI generation itself.
+
+## How it works
+
+```text
+Documents
+   │
+   ▼
+FastAPI upload endpoint
+   │
+   ▼
+Load text → split into chunks → create local embeddings
+   │
+   ▼
+ChromaDB (./chroma_db)
+   │
+Question from the Vue frontend
+   │
+   ▼
+Retrieve relevant chunks → send context and question to the LLM
+   │
+   ▼
+Grounded answer, context, and source citations
 ```
+
+## Project structure
+
+```text
 ai_rag_lab/
-├── main.py          # FastAPI server with endpoints for upload & Q&A
-├── ingest.py        # Inspect how documents are chunked
-├── vector_store.py  # Embed documents & save to ChromaDB
-├── search.py        # Test semantic search against ChromaDB
-├── rag_app.py       # Full RAG pipeline (retrieval + LLM answer)
-├── requirements.txt # Python dependencies
-└── .env             # Your API keys (NOT uploaded to GitHub)
+├── main.py           # FastAPI API for health, upload, and question answering
+├── rag_app.py        # Embedding/vector-store setup and LLM prompt configuration
+├── vector_store.py   # Document loading, chunking, embedding, and storage
+├── ingest.py         # Document ingestion utilities
+├── search.py         # Semantic search utility
+├── requirements.txt  # Python dependencies
+└── rag-web/          # Vue 3 + Vite frontend
 ```
 
----
+## Requirements
 
-## ⚙️ Setup
+- Python 3
+- Node.js matching the frontend requirement: `^22.18.0` or `>=24.12.0`
+- A key for the configured LLM provider. The default model is `groq/qwen/qwen3.8-27b`, which uses a Groq API key.
 
-### 1. Clone the repo
-```bash
-git clone https://github.com/YOUR_USERNAME/python-rag-intelligence-system-mini-project.git
-cd python-rag-intelligence-system-mini-project
+## Setup
+
+Open PowerShell in the `ai_rag_lab` project directory:
+
+```powershell
+cd D:\Projects\rag_app\ai_rag_lab
 ```
 
-### 2. Install dependencies
-```bash
-pip install -r requirements.txt
+### 1. Create a Python environment and install dependencies
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-### 3. Create your `.env` file
-Create a file called `.env` in the root folder:
+If PowerShell prevents environment activation, you can invoke the environment's Python directly:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+### 2. Configure the LLM provider
+
+Create a `.env` file in the `ai_rag_lab` directory. For the default model, add:
+
 ```env
-# Add whichever key matches the model you want to use
-GROQ_API_KEY=your_key_here
-GEMINI_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
+GROQ_API_KEY=your_groq_api_key
 ```
 
-### 4. Build the vector database (Optional for manual testing)
-```bash
-python vector_store.py
-```
-This reads your documents, chunks them, embeds them, and saves the ChromaDB database locally into `./chroma_db/`.
+Keep `.env` private; it is excluded from Git. If you change `MODEL` in `rag_app.py`, provide the API key required by that provider. An Ollama model can be used with a local Ollama installation.
 
----
+### 3. Start the backend
 
-## 🚀 Running the Project
+From `ai_rag_lab`, with the virtual environment active:
 
-### Option A: Run the FastAPI REST Server
-Start the backend server:
-```bash
-uvicorn main:app --reload --port 8000
-```
-- **Interactive Swagger UI Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **Health Check**: [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
-
-#### Available API Endpoints:
-- `GET /api/v1/health`: Checks service status.
-- `POST /api/v1/upload`: Upload `.pdf` or `.txt` files to embed and store in ChromaDB.
-- `POST /api/v1/ask`: Ask questions against the vectorized knowledge base.
-
----
-
-### Option B: Run the Standalone RAG Script
-```bash
-python rag_app.py
+```powershell
+python -m uvicorn main:app --reload --port 8000
 ```
 
----
+- API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- Health check: [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
 
-## 🔄 Switching AI Models
+### 4. Start the frontend
 
-Edit the `MODEL` variable at the top of `rag_app.py`:
+Open a second terminal:
 
-```python
-MODEL = "groq/llama-3.1-8b-instant"   # Groq free tier
-MODEL = "gemini/gemini-2.0-flash"     # Google Gemini
-MODEL = "openai/gpt-4o-mini"          # OpenAI
-MODEL = "ollama/llama3.2"              # Local (no API key needed)
+```powershell
+cd D:\Projects\rag_app\ai_rag_lab\rag-web
+npm install
+npm run dev
 ```
 
-LiteLLM automatically picks the right API key from your `.env`.
+Open the local URL printed by Vite in your terminal. The frontend connects to the backend at `http://localhost:8000`.
 
----
+## API endpoints
 
-## 🧩 How It Works
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/health` | Check that the backend is running |
+| `POST` | `/api/v1/upload` | Upload a PDF, TXT, Markdown, DOCX, CSV, or JSON file for indexing |
+| `POST` | `/api/v1/ask` | Ask a question; optionally include `document_name` to filter by a document |
 
-1. **Chunk** — Documents are split into small overlapping pieces
-2. **Embed** — Each chunk is converted to a vector (list of numbers) by a local HuggingFace model
-3. **Store** — Vectors are saved in ChromaDB on your disk
-4. **Retrieve** — User question is converted to a vector; closest chunks are fetched
-5. **Generate** — Chunks + question are sent to an LLM with strict instructions to only use the provided context
+## Data and privacy
 
-### Full Pipeline at a Glance
-```
-Your Document (PDF/TXT)
-        │
-        ▼
-  [Load]  PyPDFLoader / TextLoader
-        │
-        ▼
-  [Chunk]  RecursiveCharacterTextSplitter (500 chars, 50 overlap)
-        │
-        ▼
-  [Embed]  HuggingFace all-MiniLM-L6-v2  ──► 384-dim vectors
-        │
-        ▼
-  [Store]  ChromaDB (persisted to ./chroma_db/)
-        │
-   ─────┴───── (indexing done — run once) ─────
-        │
-   User asks a question
-        │
-        ▼
-  [Embed Question]  same HuggingFace model
-        │
-        ▼
-  [Retrieve]  cosine similarity search → top-k chunks
-        │
-        ▼
-  [Generate]  chunks + question → strict prompt → LiteLLM → LLM → Answer
-```
+Uploaded documents are processed by the backend and their embeddings are stored in the local `chroma_db` directory. Questions and retrieved document context are sent to the configured LLM provider to generate answers. Avoid uploading sensitive documents unless you have reviewed the provider's data handling terms. Local database and temporary upload files are excluded from Git.
 
----
+## Tech stack
 
-## 🛠️ Tech Stack
-
-| Tool | Role |
+| Technology | Role |
 |---|---|
-| [FastAPI](https://fastapi.tiangolo.com) | High-performance REST API backend |
-| [Uvicorn](https://www.uvicorn.org) | ASGI web server |
-| [LangChain](https://langchain.com) | Orchestration framework |
-| [ChromaDB](https://trychroma.com) | Local vector database |
-| [LiteLLM](https://litellm.ai) | Universal LLM API wrapper |
-| [HuggingFace](https://huggingface.co) | Local embedding model (`all-MiniLM-L6-v2`) |
-| [python-dotenv](https://pypi.org/project/python-dotenv/) | Loads `.env` secrets |
+| FastAPI + Uvicorn | Backend REST API |
+| Vue 3 + Vite | Browser-based frontend |
+| LangChain | Document loading, text splitting, retrieval, and prompt orchestration |
+| Hugging Face sentence-transformers | Local document and query embeddings |
+| ChromaDB | Persistent local vector store |
+| LiteLLM | Configurable LLM provider integration |
